@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Find Jobs - Job Tracker Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+	<div class="col-lg-10 mx-auto">
+		<div class="card mb-4">
+			<div class="card-body">
+				<h4 class="mb-3"><i class="fas fa-magnifying-glass me-2"></i>Find Jobs</h4>
+				<form method="POST" action="{{ url_for('find_jobs') }}" class="row g-3 align-items-end">
+					<div class="col-md-4">
+						<label class="form-label">Keyword</label>
+						<input type="text" class="form-control" name="query" placeholder="e.g., Python developer" value="{{ query }}" required>
+					</div>
+					<div class="col-md-4">
+						<label class="form-label">Location (optional)</label>
+						<input type="text" class="form-control" name="location" placeholder="e.g., Bangalore" value="{{ location }}">
+					</div>
+					<div class="col-md-2">
+						<label class="form-label">Page</label>
+						<input type="number" min="1" class="form-control" name="page" value="{{ page or 1 }}">
+					</div>
+					<div class="col-md-2">
+						<button type="submit" class="btn btn-primary w-100 text-nowrap"><i class="fas fa-search me-1"></i>Search</button>
+					</div>
+				</form>
+			</div>
+		</div>
+
+		{% if results %}
+		<div class="card">
+			<div class="card-body">
+				<h5 class="mb-3">Results ({{ results|length }})</h5>
+				<div class="table-responsive">
+					<table class="table table-hover align-middle">
+						<thead>
+							<tr>
+								<th>Title</th>
+								<th>Company</th>
+								<th>Location</th>
+								<th>Date Posted</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for job in results %}
+							<tr>
+								<td>
+									<a href="{{ job.link }}" target="_blank" class="fw-semibold text-decoration-none">{{ job.title }}</a>
+									<div class="small text-muted mt-1">{{ job.snippet or '' }}</div>
+								</td>
+								<td>{{ job.company or 'N/A' }}</td>
+								<td>{{ job.location or '—' }}</td>
+								<td>{{ job.date or '—' }}</td>
+								<td>
+									<form method="POST" action="{{ url_for('import_job') }}">
+										<input type="hidden" name="title" value="{{ job.title }}">
+										<input type="hidden" name="company" value="{{ job.company }}">
+										<input type="hidden" name="location" value="{{ job.location }}">
+										<input type="hidden" name="snippet" value="{{ job.snippet }}">
+										<input type="hidden" name="link" value="{{ job.link }}">
+										<input type="hidden" name="date" value="{{ job.date }}">
+										<button type="submit" class="btn btn-sm btn-outline-success text-nowrap"><i class="fas fa-plus me-1"></i>Import</button>
+									</form>
+								</td>
+							</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+				<div class="d-flex justify-content-between mt-3">
+					<a href="#" onclick="document.querySelector('input[name=page]').value=Math.max(1, ({{ page or 1 }}-1)); this.closest('form')?.submit(); return false;" class="btn btn-outline-secondary btn-sm"><i class="fas fa-chevron-left me-1"></i>Prev</a>
+					<a href="#" onclick="document.querySelector('input[name=page]').value=( {{ page or 1 }} + 1 ); this.closest('form')?.submit(); return false;" class="btn btn-outline-secondary btn-sm">Next<i class="fas fa-chevron-right ms-1"></i></a>
+				</div>
+			</div>
+		</div>
+		{% elif query %}
+		<div class="alert alert-warning">No results found. Try another query or page.</div>
+		{% endif %}
+	</div>
+</div>
+{% endblock %}

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Match Analysis - Job Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .match-score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .score-excellent { background: linear-gradient(135deg, #28a745, #20c997); }
+        .score-good { background-image: linear-gradient(135deg, #17a2b8, #6f42c1); }
+        .score-moderate { background-image: linear-gradient(135deg, #ffc107, #fd7e14); }
+        .score-limited { background-image: linear-gradient(135deg, #fd7e14, #dc3545); }
+        .score-low { background-image: linear-gradient(135deg, #dc3545, #6c757d); }
+        
+        .skill-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .skill-category {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid #007bff;
+        }
+        
+        .skill-item {
+            background: white;
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            border: 1px solid #dee2e6;
+        }
+        
+        .missing-skill {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        
+        .analysis-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .score-breakdown {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-custom {
+            height: 25px;
+            border-radius: 12px;
+            background: #e9ecef;
+        }
+        
+        .progress-custom .progress-bar {
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid py-4">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-bullseye text-primary me-2"></i>
+                        Job Match Analysis
+                    </h1>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-briefcase me-2"></i>
+                            {{ job.position }} at {{ job.company }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Company:</strong> {{ job.company }}</p>
+                                <p><strong>Position:</strong> {{ job.position }}</p>
+                                <p><strong>Location:</strong> {{ job.location or 'N/A' }}</p>
+                                <p><strong>Date Posted:</strong> {{ job.date or 'N/A' }}</p>
+                                <p><strong>Status:</strong> 
+                                    <span class="badge bg-{{ 'success' if job.status == 'applied' else 'warning' if job.status == 'interviewed' else 'info' }}">
+                                        {{ job.status.title() }}
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Application Date:</strong> 
+                                    {% if job.application_date %}
+                                        {% if job.application_date is string %}
+                                            {{ job.application_date }}
+                                        {% else %}
+                                            {{ job.application_date.strftime('%B %d, %Y') }}
+                                        {% endif %}
+                                    {% else %}
+                                        Unknown
+                                    {% endif %}
+                                </p>
+                                {% if job.salary_range %}
+                                <p><strong>Salary Range:</strong> {{ job.salary_range }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-center shadow-sm">
+                    <div class="card-body">
+                        <div class="match-score-circle 
+                            {% if match_score >= 85 %}score-excellent
+                            {% elif match_score >= 70 %}score-good
+                            {% elif match_score >= 55 %}score-moderate
+                            {% elif match_score >= 40 %}score-limited
+                            {% else %}score-low{% endif %}">
+                            {{ match_score }}%
+                        </div>
+                        <h5 class="mt-3">Overall Match</h5>
+                        <p class="text-muted">
+                            {% if match_score >= 85 %}Excellent Match!
+                            {% elif match_score >= 70 %}Good Match
+                            {% elif match_score >= 55 %}Moderate Match
+                            {% elif match_score >= 40 %}Limited Match
+                            {% else %}Low Match{% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <div class="score-breakdown">
+                    <h5 class="mb-3">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Score Breakdown
+                    </h5>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Technical Skills (60%)</span>
+                            <span>{{ analysis.skill_match_score|round(1) }}%</span>
+                        </div>
+                        <div class="progress progress-custom">
+                            <div class="progress-bar bg-success" style="width: {{ analysis.skill_match_score }}%">
+                                {{ analysis.skill_match_score|round(1) }}%
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Experience Level (25%)</span>
+                            <span>{{ analysis.experience_match_score|round(1) }}%</span>
+                        </div>
+                        <div class="progress progress-custom">
+                            <div class="progress-bar bg-info" style="width: {{ analysis.experience_match_score }}%">
+                                {{ analysis.experience_match_score|round(1) }}%
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Industry Relevance (15%)</span>
+                            <span>{{ analysis.industry_match_score|round(1) }}%</span>
+                        </div>
+                        <div class="progress progress-custom">
+                            <div class="progress-bar bg-warning" style="width: {{ analysis.industry_match_score }}%">
+                                {{ analysis.industry_match_score|round(1) }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="analysis-card">
+                    <h4 class="mb-3">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        Analysis Summary
+                    </h4>
+                    <p class="mb-2"><strong>Experience Level Required:</strong> {{ analysis.experience_level.title() }}</p>
+                    {% if analysis.industry_focus %}
+                    <p class="mb-2"><strong>Industry Focus:</strong> {{ ', '.join(analysis.industry_focus) }}</p>
+                    {% endif %}
+                    <p class="mb-0"><strong>Overall Assessment:</strong> {{ analysis.overall_analysis }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Your Skills ({{ resume.skills|length if resume.skills else 0 }})
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if resume.skills %}
+                        <div class="skill-grid">
+                            {% for skill in resume.skills %}
+                            <div class="skill-item">{{ skill }}</div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No skills extracted from resume</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-briefcase me-2"></i>
+                            Required Skills ({{ analysis.job_skills|length }})
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if analysis.job_skills %}
+                        <div class="skill-grid">
+                            {% for skill in analysis.job_skills %}
+                            <div class="skill-item 
+                                {% if skill in (resume.skills or []) %}bg-success text-white{% endif %}">
+                                {{ skill }}
+                                {% if skill in (resume.skills or []) %}
+                                <i class="fas fa-check ms-2"></i>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No specific skills identified in job description</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if missing_skills %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Skills to Develop ({{ missing_skills|length }})
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="skill-grid">
+                            {% for skill in missing_skills %}
+                            <div class="skill-item missing-skill">
+                                <i class="fas fa-plus-circle me-2"></i>
+                                {{ skill }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if skill_suggestions %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-graduation-cap me-2"></i>
+                            Skill Development Suggestions
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% for category, skills in skill_suggestions.items() %}
+                        <div class="skill-category mb-3">
+                            <h6 class="text-capitalize">{{ category.replace('_', ' ') }}</h6>
+                            <div class="skill-grid">
+                                {% for skill in skills %}
+                                <div class="skill-item">{{ skill }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if analysis.key_requirements %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-secondary text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-list-check me-2"></i>
+                            Key Requirements from Job Description
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            {% for requirement in analysis.key_requirements %}
+                            <li class="list-group-item">{{ requirement }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary me-2">
+                    <i class="fas fa-dashboard me-2"></i>Back to Dashboard
+                </a>
+                <a href="{{ url_for('add_job') }}" class="btn btn-success me-2">
+                    <i class="fas fa-plus me-2"></i>Add Another Job
+                </a>
+                <button class="btn btn-outline-info" onclick="window.print()">
+                    <i class="fas fa-print me-2"></i>Print Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

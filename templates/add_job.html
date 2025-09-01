@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Add Job - Job Tracker Pro{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="text-center mb-4">
+            <h2 class="mb-2">
+                <i class="fas fa-plus-circle me-2"></i>Add New Job
+            </h2>
+            <p class="text-muted">Track a new job application and get insights on how well your resume matches</p>
+        </div>
+
+        <div class="card">
+            <div class="card-body p-5">
+                <form method="POST" action="{{ url_for('add_job') }}">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label for="company" class="form-label">
+                                <i class="fas fa-building me-2"></i>Company Name *
+                            </label>
+                            <input type="text" class="form-control" id="company" name="company" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="position" class="form-label">
+                                <i class="fas fa-briefcase me-2"></i>Position Title *
+                            </label>
+                            <input type="text" class="form-control" id="position" name="position" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="application_date" class="form-label">
+                                <i class="fas fa-calendar me-2"></i>Application Date *
+                            </label>
+                            <input type="date" class="form-control" id="application_date" name="application_date" required>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="status" class="form-label">
+                                <i class="fas fa-info-circle me-2"></i>Application Status
+                            </label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="applied">Applied</option>
+                                <option value="interviewed">Interviewed</option>
+                                <option value="offered">Offered</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="withdrawn">Withdrawn</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="salary_range" class="form-label">
+                                <i class="fas fa-dollar-sign me-2"></i>Salary Range (Optional)
+                            </label>
+                            <input type="text" class="form-control" id="salary_range" name="salary_range" 
+                                   placeholder="e.g., $50,000 - $70,000">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="resume_version" class="form-label">
+                                <i class="fas fa-file-alt me-2"></i>Resume Version Used
+                            </label>
+                            <select class="form-select" id="resume_version" name="resume_version">
+                                <option value="">Select Resume</option>
+                            </select>
+                        </div>
+  
+                        <div class="col-12">
+                            <label for="job_description" class="form-label">
+                                <i class="fas fa-align-left me-2"></i>Job Description *
+                            </label>
+                            <textarea class="form-control" id="job_description" name="job_description" rows="8" 
+                                      placeholder="Paste the job description here to get matching insights..." required></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb me-1"></i>
+                                The more detailed the description, the better our matching algorithm will work!
+                            </div>
+
+                        </div>
+                        
+                        <div class="col-12">
+                            <label for="follow_up_notes" class="form-label">
+                                <i class="fas fa-sticky-note me-2"></i>Follow-up Notes (Optional)
+                            </label>
+                            <textarea class="form-control" id="follow_up_notes" name="follow_up_notes" rows="3" 
+                                      placeholder="Add any notes about follow-ups, contacts, or important details..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-5">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                        </a>
+                        
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save me-2"></i>Add Job
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-lightbulb me-2"></i>Pro Tips for Better Tracking
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>Complete Job Descriptions</h6>
+                        <p class="text-muted small">Include the full job description to get accurate skill matching and insights.</p>
+                        
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>Update Status Regularly</h6>
+                        <p class="text-muted small">Keep your application status current to track your progress effectively.</p>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>Add Follow-up Notes</h6>
+                        <p class="text-muted small">Document important conversations, interview dates, and next steps.</p>
+                        
+                        <h6><i class="fas fa-check-circle text-success me-2"></i>Track Salary Information</h6>
+                        <p class="text-muted small">Record salary ranges to understand market rates and negotiate better.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('application_date').value = today;
+    
+    const jobDescription = document.getElementById('job_description');
+    const charCount = document.createElement('small');
+    charCount.className = 'text-muted mt-1 d-block';
+    charCount.innerHTML = '<i class="fas fa-info-circle me-1"></i>0 characters';
+    jobDescription.parentNode.appendChild(charCount);
+    
+    jobDescription.addEventListener('input', function() {
+        const count = this.value.length;
+        charCount.innerHTML = `<i class="fas fa-info-circle me-1"></i>${count} characters`;
+        
+        if (count > 1000) {
+            charCount.className = 'text-success mt-1 d-block';
+        } else if (count > 500) {
+            charCount.className = 'text-warning mt-1 d-block';
+        } else {
+            charCount.className = 'text-muted mt-1 d-block';
+        }
+    });
+    
+
+
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const company = document.getElementById('company').value.trim();
+        const position = document.getElementById('position').value.trim();
+        const jobDescription = document.getElementById('job_description').value.trim();
+        
+        if (!company || !position || !jobDescription) {
+            e.preventDefault();
+            alert('Please fill in all required fields.');
+            return;
+        }
+        
+        if (jobDescription.length < 50) {
+            e.preventDefault();
+            alert('Job description should be at least 50 characters long for better matching.');
+            return;
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Job Tracker Pro{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+    </h2>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('find_jobs') }}" class="btn btn-outline-primary">
+            <i class="fas fa-magnifying-glass me-2"></i>Find Jobs
+        </a>
+        <a href="{{ url_for('add_job') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add Job
+        </a>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <div class="card-body text-center">
+                <i class="fas fa-file-alt fa-2x mb-3"></i>
+                <h3 class="mb-1">{{ resumes|length }}</h3>
+                <p class="mb-0">Resumes</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <div class="card-body text-center">
+                <i class="fas fa-briefcase fa-2x mb-3"></i>
+                <h3 class="mb-1">{{ jobs|length }}</h3>
+                <p class="mb-0">Jobs Applied</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <div class="card-body text-center">
+                <i class="fas fa-calendar-check fa-2x mb-3"></i>
+                <h3 class="mb-1">{{ jobs|selectattr('status', 'equalto', 'applied')|list|length }}</h3>
+                <p class="mb-0">Pending</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-line fa-2x mb-3"></i>
+                <h3 class="mb-1">{{ jobs|selectattr('status', 'equalto', 'offered')|list|length }}</h3>
+                <p class="mb-0">Offers</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-alt me-2"></i>Your Resumes
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if resumes %}
+                    <div class="list-group list-group-flush">
+                        {% for resume in resumes %}
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1">{{ resume.original_filename }}</h6>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        {% if resume.upload_date %}
+                                            {% if resume.upload_date is string %}
+                                                {{ resume.upload_date }}
+                                            {% else %}
+                                                {{ resume.upload_date.strftime('%B %d, %Y') }}
+                                            {% endif %}
+                                        {% else %}
+                                            Unknown
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <span class="badge bg-success">Parsed</span>
+                            </div>
+                            
+                            {% if resume.parsed_data %}
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Data extracted successfully
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No resumes uploaded yet</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-upload me-2"></i>Upload Resume
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-briefcase me-2"></i>Recent Job Applications
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if jobs %}
+                    <div class="list-group list-group-flush">
+                        {% for job in jobs[:5] %}
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ job.position }}</h6>
+                                    <p class="mb-1 text-muted">{{ job.company }}</p>
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        {% if job.application_date %}
+                                            {% if job.application_date is string %}
+                                                {{ job.application_date }}
+                                            {% else %}
+                                                {{ job.application_date.strftime('%B %d, %Y') }}
+                                            {% endif %}
+                                        {% else %}
+                                            Unknown
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="status-badge status-{{ job.status }}">
+                                        {{ job.status.title() }}
+                                    </span>
+                                    {% if job.job_description %}
+                                    <div class="mt-1">
+                                        <a href="{{ url_for('check_match', job_id=job.id) }}" class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-bullseye me-1"></i>Check Match
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if jobs|length > 5 %}
+                    <div class="text-center mt-3">
+                        <a href="#" class="btn btn-outline-success btn-sm">View All Jobs</a>
+                    </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-briefcase fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No job applications yet</p>
+                        <a href="{{ url_for('add_job') }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-plus me-2"></i>Add Job
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Application Status Distribution
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statusChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie me-2"></i>Quick Stats
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span>Success Rate</span>
+                    <span class="fw-bold text-success">
+                        {% if jobs|length > 0 %}
+                            {{ ((jobs|selectattr('status', 'equalto', 'offered')|list|length / jobs|length) * 100)|round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span>Response Rate</span>
+                    <span class="fw-bold text-warning">
+                        {% if jobs|length > 0 %}
+                            {% set responded = jobs|selectattr('status', 'in', ['interviewed', 'offered', 'rejected'])|list|length %}
+                            {{ ((responded / jobs|length) * 100)|round(1) }}%
+                        {% else %}
+                            0%
+                        {% endif %}
+                    </span>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Avg. Response Time</span>
+                    <span class="fw-bold text-info">3.2 days</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    {% if jobs %}
+                        {% for job in jobs[:3] %}
+                        <div class="d-flex mb-3">
+                            <div class="flex-shrink-0">
+                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <i class="fas fa-briefcase text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-1">Applied to {{ job.position }} at {{ job.company }}</h6>
+                                <small class="text-muted">
+                                    {% if job.application_date %}
+                                        {% if job.application_date is string %}
+                                            {{ job.application_date }}
+                                        {% else %}
+                                            {{ job.application_date.strftime('%B %d, %Y at %I:%M %p') }}
+                                        {% endif %}
+                                    {% else %}
+                                        Unknown date
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No recent activity</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    
+    const statusCounts = {};
+    {% for job in jobs %}
+        const status = '{{ job.status }}';
+        statusCounts[status] = (statusCounts[status] || 0) + 1;
+    {% endfor %}
+    
+    const statusLabels = Object.keys(statusCounts);
+    const statusData = Object.values(statusCounts);
+    
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: statusLabels.map(label => label.charAt(0).toUpperCase() + label.slice(1)),
+            datasets: [{
+                data: statusData,
+                backgroundColor: [
+                    '#3b82f6', 
+                    '#f59e0b', 
+                    '#10b981', 
+                    '#ef4444', 
+                    '#8b5cf6'  
+                ],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+
+
+
