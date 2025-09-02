@@ -2,7 +2,10 @@ services:
   - type: web
     name: job-tracker
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      apt-get update && apt-get install -y python3-dev build-essential libpq-dev
+      pip install --upgrade pip
+      pip install -r requirements.txt
     startCommand: gunicorn app:app --config gunicorn.conf.py
     envVars:
       - key: PYTHON_VERSION
