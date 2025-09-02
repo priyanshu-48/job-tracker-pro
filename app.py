@@ -17,6 +17,7 @@ except OSError:
     download("en_core_web_sm")
     nlp = spacy.load("en_core_web_sm")
 
+
 load_dotenv()
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret-key')
