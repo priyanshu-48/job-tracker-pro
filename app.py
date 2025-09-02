@@ -9,6 +9,13 @@ from datetime import datetime
 from services.resume_parser import ResumeParser
 from services.job_matcher import JobMatcher
 from models.database import init_db, get_db
+import spacy
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    from spacy.cli import download
+    download("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
 
 load_dotenv()
 
