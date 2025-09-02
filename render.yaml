@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: job-tracker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --config gunicorn.conf.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: GUNICORN_WORKERS
+        value: 4
+      - key: GUNICORN_THREADS
+        value: 1
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False

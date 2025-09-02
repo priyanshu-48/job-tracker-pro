@@ -96,10 +96,4 @@ industry_keywords = {
     'ai_ml': ['artificial intelligence', 'machine learning', 'ai', 'ml', 'data science']
 }
 
-SECRET_KEY = 'my-secret-key' 
-UPLOAD_FOLDER = 'uploads'
-MAX_CONTENT_LENGTH = 16 * 1024 * 1024  
-ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
 
-DEBUG = True
-PORT = 5000

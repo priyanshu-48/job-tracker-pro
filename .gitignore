@@ -1,5 +1,10 @@
+.env
+*.pyc
 __pycache__/
-start.bat
-
+uploads/*
+!uploads/.gitkeep
+data/*
+!data/.gitkeep
+venv/
 
 

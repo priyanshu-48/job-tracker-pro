@@ -1,20 +1,27 @@
 import sqlite3
 from services.job_scraper import search_timesjobs_jobs
-from models.config import SECRET_KEY, UPLOAD_FOLDER, MAX_CONTENT_LENGTH, ALLOWED_EXTENSIONS, DEBUG, PORT
-
+import os
+from dotenv import load_dotenv
 import logging
-
-logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO, 
-                    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
-logger = logging.getLogger(__name__)
-
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, g
 from werkzeug.utils import secure_filename
-import os
 from datetime import datetime
 from services.resume_parser import ResumeParser
 from services.job_matcher import JobMatcher
 from models.database import init_db, get_db
+
+load_dotenv()
+
+SECRET_KEY = os.getenv('SECRET_KEY', 'default-secret-key')
+UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
+MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+PORT = int(os.getenv('PORT', 5000))
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt'}
+
+logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO, 
+                   format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = SECRET_KEY
@@ -225,4 +232,5 @@ def check_match(job_id):
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=DEBUG, port=PORT)
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=DEBUG)
