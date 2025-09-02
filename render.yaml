@@ -3,15 +3,7 @@ services:
     name: job-tracker
     env: python
     buildCommand: |
-      pip install --upgrade pip
+      apt-get update && apt-get install -y python3-dev build-essential libjpeg-dev zlib1g-dev libxml2-dev libxslt1-dev
+      pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
     startCommand: gunicorn app:app --config gunicorn.conf.py
-    envVars:
-      - key: GUNICORN_WORKERS
-        value: 4
-      - key: GUNICORN_THREADS
-        value: 1
-      - key: SECRET_KEY
-        generateValue: true
-      - key: DEBUG
-        value: False
