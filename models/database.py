@@ -2,12 +2,23 @@ from pymongo import MongoClient
 from bson import ObjectId
 from datetime import datetime
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+MONGO_URI = os.getenv("MONGO_URI")
+if not MONGO_URI:
+    raise ValueError("MONGO_URI not set in environment variables")
 DB_NAME = "job_tracker"
 
 def get_db():
-    client = MongoClient(MONGO_URI)
+    import certifi
+    from pymongo import MongoClient
+
+    client = MongoClient(
+        MONGO_URI,
+        tls=True,
+        tlsCAFile=certifi.where()
+    )
     return client[DB_NAME]
 
 

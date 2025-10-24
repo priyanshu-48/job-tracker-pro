@@ -1,9 +1,8 @@
-import sqlite3
 from services.job_scraper import search_timesjobs_jobs
 import os
 from dotenv import load_dotenv
 import logging
-from flask import Flask, render_template, request, jsonify, flash, redirect, url_for, g
+from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from services.resume_parser import ResumeParser
@@ -38,17 +37,6 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-def get_db_connection():
-    if 'db' not in g:
-        g.db = get_db()
-    return g.db
-
-@app.teardown_appcontext
-def close_db_connection(exception):
-    db = g.pop('db', None)
-    if db is not None:
-        db.close()
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -78,13 +66,15 @@ def upload_resume():
         try:
             parser = ResumeParser()
             parsed_data = parser.parse_resume(filepath)
-            db = get_db_connection()
-            cursor = db.cursor()
-            cursor.execute('''
-                INSERT INTO resumes (filename, original_filename, upload_date, parsed_data)
-                VALUES (?, ?, ?, ?)
-            ''', (filename, file.filename, datetime.now(), str(parsed_data)))
-            db.commit()
+            db = get_db()
+            db.resumes.insert_one({
+                "filename": filename,
+                "original_filename": file.filename,
+                "upload_date": datetime.utcnow(),
+                "parsed_data": parsed_data,
+                "created_at": datetime.utcnow()
+            })
+            os.remove(filepath)
             logger.info(f"Resume {filename} uploaded and parsed successfully.")
             flash('Resume uploaded and parsed successfully!')
             return redirect(url_for('dashboard'))
@@ -97,12 +87,13 @@ def upload_resume():
 
 @app.route('/dashboard')
 def dashboard():
-    db = get_db_connection()
-    cursor = db.cursor()
-    cursor.execute('SELECT * FROM resumes ORDER BY upload_date DESC')
-    resumes = cursor.fetchall()
-    cursor.execute('SELECT * FROM jobs ORDER BY application_date DESC')
-    jobs = cursor.fetchall()
+    db = get_db()
+    resumes = list(db.resumes.find().sort("upload_date", -1))
+    jobs = list(db.jobs.find().sort("application_date", -1))
+    for r in resumes:
+        r["_id"] = str(r["_id"])
+    for j in jobs:
+        j["_id"] = str(j["_id"])
     return render_template('dashboard.html', resumes=resumes, jobs=jobs)
 
 @app.route('/add_job', methods=['GET', 'POST'])
@@ -113,13 +104,16 @@ def add_job():
         job_description = request.form['job_description']
         application_date = request.form['application_date']
         status = request.form['status']
-        db = get_db_connection()
-        cursor = db.cursor()
-        cursor.execute('''
-            INSERT INTO jobs (company, position, job_description, application_date, status)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (company, position, job_description, application_date, status))
-        db.commit()
+        db = get_db()
+        db.jobs.insert_one({
+            "company": company,
+            "position": position,
+            "job_description": job_description,
+            "application_date": application_date,
+            "status": status,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        })
         flash('Job added successfully!')
         return redirect(url_for('dashboard'))
     return render_template('add_job.html')
@@ -182,61 +176,96 @@ def import_job():
         description = f"Location: {job_location}\n\n{description}"
     if job_link:
         description = f"Link: {job_link}\n\n{description}"
-    db = get_db_connection()
-    cursor = db.cursor()
-    application_date = datetime.now().date().isoformat()
-    status = 'applied'
-    cursor.execute('''
-        INSERT INTO jobs (company, position, job_description, application_date, status)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (company, title, description, application_date, status))
-    db.commit()
+    db = get_db()
+    application_date = datetime.utcnow().date().isoformat()
+    status = "applied"
+
+    db.jobs.insert_one({
+        "company": company,
+        "position": title,
+        "job_description": description,
+        "application_date": application_date,
+        "status": status,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    })
     flash('Job imported successfully!')
     return redirect(url_for('dashboard'))
 
-@app.route('/check_match/<int:job_id>')
+from bson import ObjectId
+import ast
+
+@app.route('/check_match/<string:job_id>')
 def check_match(job_id):
-    db = get_db_connection()
-    cursor = db.cursor()
-    cursor.execute('SELECT * FROM jobs WHERE id = ?', (job_id,))
-    job = cursor.fetchone()
+    db = get_db()
+
+    # --- Fetch job document ---
+    try:
+        job = db.jobs.find_one({"_id": ObjectId(job_id)})
+    except Exception:
+        flash("Invalid Job ID.")
+        return redirect(url_for('dashboard'))
+
     if not job:
         flash('Job not found')
         return redirect(url_for('dashboard'))
+
     logger.debug(f"Job data: {job}")
-    logger.debug(f"Job columns: {[desc[0] for desc in cursor.description]}")
-    cursor.execute('SELECT * FROM resumes ORDER BY upload_date DESC LIMIT 1')
-    resume = cursor.fetchone()
+
+    # --- Fetch latest resume document ---
+    resume = db.resumes.find_one(sort=[("upload_date", -1)])
     if not resume:
         flash('No resume found. Please upload a resume first.')
         return redirect(url_for('index'))
+
     logger.debug(f"Resume data: {resume}")
-    logger.debug(f"Resume columns: {[desc[0] for desc in cursor.description]}")
+
     try:
-        import ast
-        resume_data = ast.literal_eval(resume[4])
+        # Parse stored resume data
+        parsed_data_field = resume.get("parsed_data", "{}")
+        if isinstance(parsed_data_field, str):
+            resume_data = ast.literal_eval(parsed_data_field)
+        else:
+            resume_data = parsed_data_field
+
         from services.job_matcher import JobMatcher
         matcher = JobMatcher()
-        match_score, analysis_details = matcher.calculate_match_score(resume_data, job[3])
-        missing_skills = matcher._find_missing_skills_enhanced(resume_data, analysis_details['job_skills'])
+
+        # Compute match score and analysis
+        match_score, analysis_details = matcher.calculate_match_score(
+            resume_data, job.get("job_description", "")
+        )
+
+        missing_skills = matcher._find_missing_skills_enhanced(
+            resume_data, analysis_details.get("job_skills", [])
+        )
         skill_suggestions = matcher.get_skill_suggestions(missing_skills)
+
         logger.debug(f"Resume data type: {type(resume_data)}")
-        logger.debug(f"Job description type: {type(job[3])}")
-        logger.debug(f"Match score type: {type(match_score)}")
+        logger.debug(f"Job description type: {type(job.get('job_description'))}")
         logger.debug(f"Match score value: {match_score}")
-        logger.debug(f"Missing skills type: {type(missing_skills)}")
+        logger.debug(f"Missing skills: {missing_skills}")
         logger.debug(f"Analysis details: {analysis_details}")
-        return render_template('job_match.html', 
-                             job=job, 
-                             resume=resume_data, 
-                             match_score=match_score,
-                             missing_skills=missing_skills,
-                             skill_suggestions=skill_suggestions,
-                             analysis=analysis_details)
+
+        # Convert ObjectIds to strings for Jinja
+        job["_id"] = str(job["_id"])
+        resume["_id"] = str(resume["_id"])
+
+        return render_template(
+            'job_match.html',
+            job=job,
+            resume=resume_data,
+            match_score=match_score,
+            missing_skills=missing_skills,
+            skill_suggestions=skill_suggestions,
+            analysis=analysis_details
+        )
+
     except Exception as e:
         logger.error(f'Error analyzing match for job ID {job_id}: {str(e)}', exc_info=True)
         flash(f'Error analyzing match: {str(e)}')
         return redirect(url_for('dashboard'))
+
 
 if __name__ == '__main__':
     init_db()
